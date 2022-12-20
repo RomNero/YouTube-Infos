@@ -1,0 +1,8 @@
+docker run \
+--name watchtower \
+-v /var/run/docker.sock:/var/run/docker.sock \
+containrrr/watchtower \
+--run-once --monitor-only NAME-CONTAINER01 NAME-CONTAINER01
+
+# --label-enable /// If instead you want to only include containers with the enable label, pass the --label-enable flag and set the com.centurylinklabs.watchtower.enable label with a value of true on the containers you want to watch.
+# --schedule "0 56 15 * * *"   /// Cann't be used with --run-once
