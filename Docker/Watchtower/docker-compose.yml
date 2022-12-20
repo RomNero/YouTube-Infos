@@ -1,0 +1,14 @@
+version: "3"
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    environment:
+      - WATCHTOWER_NOTIFICATIONS=gotify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.DOMAIN.ME/
+      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=#######################
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    command: --rolling-restart --cleanup --label-enable --debug --schedule "0 0 3 * * 6"
