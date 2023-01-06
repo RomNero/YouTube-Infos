@@ -1,0 +1,32 @@
+docker run -p 8080:80 -e TZ="Europe/Berlin" -e GOTIFY_DEFAULTUSER_PASS="MyDefaultPass123" -v /var/gotify/data:/app/data gotify/server
+
+version: "3"
+
+services:
+  gotify:
+    image: gotify/server
+    ports:
+      - 8080:80
+    environment:
+      - TZ=Europe/Berlin
+      - GOTIFY_DEFAULTUSER_PASS=MyDefaultPass123
+    volumes:
+      - "./gotify_data:/app/data"
+
+curl "https://push.example.de/message?token=<apptoken>" -F "title=my title" -F "message=my message" -F "priority=5"
+
+
+version: "3"
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    environment:
+      - WATCHTOWER_NOTIFICATIONS=gotify
+      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.DOMAIN.ME/
+      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=#######################
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    command: --rolling-restart --cleanup --label-enable --debug
