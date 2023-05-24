@@ -131,10 +131,10 @@ vrrp_script check_haproxy {
 }
 
 vrrp_instance my-web {
-    state MASTER
+    state BACKUP
     interface ens18
     virtual_router_id 123
-    priority 100
+    priority 99
     advert_int 1
     authentication {
         auth_type PASS
