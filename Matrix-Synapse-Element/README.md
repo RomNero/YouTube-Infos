@@ -131,9 +131,9 @@ vi /etc/apache2/ports.conf
 
 ##### Test Sites:
 
-[https://matrix.youDOMAIN.COM/_matrix/static/] [1]
+[https://matrix.youDOMAIN.COM/_matrix/static/][1]
 
-[https://federationtester.matrix.org] [2]
+[https://federationtester.matrix.org][2]
 
 
 ### Create Admin-User:
