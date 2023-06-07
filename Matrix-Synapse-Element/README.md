@@ -1,22 +1,26 @@
-Install Packages:
+### Install Packages:
 
 * Docker: curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 * Apache: apt install apache2
 * a2enmod proxy rewrite ssl headers proxy_http
 
-Let'sEncrypt:
+### Let'sEncrypt:
+
 apt install certbot
 
 ### Generate Matrix Config:
+
+```
 docker run -it --rm \
     -v "/opt/matrix/synapse:/data" \
     -e SYNAPSE_SERVER_NAME=matrix.DOMAIN.COM \
     -e SYNAPSE_REPORT_STATS=no \
     matrixdotorg/synapse:latest generate
-    
+```    
     
 #### Change Matrix configuration. postgres database:
 
+```
 database:
   name: psycopg2
   args:
@@ -29,10 +33,10 @@ database:
 ...
 #Registration:
 enable_registration: false
-
+```
 
 ### Docker Compose
-
+```
 version: '3.8'
 
 services:
@@ -67,21 +71,27 @@ services:
      - POSTGRES_USER=synapse
      - POSTGRES_PASSWORD=STRONGPASSWORD_123654
      - POSTGRES_INITDB_ARGS=--lc-collate C --lc-ctype C --encoding UTF8
- 
+ ```
 
 
 ### SSL Let'sEncrypt
+
 certbot certonly
 
 ### Apache Configuration:
+
 #### Add Ports:
+
+```
 vi /etc/apache2/ports.conf
 <IfModule ssl_module>
         Listen 8448
 </IfModule>
+```
 
 #### VirtualHost:
 
+```
 <VirtualHost *:80>
     ServerName  matrix.youDOMAIN.COM
     RewriteEngine On
@@ -117,14 +127,16 @@ vi /etc/apache2/ports.conf
     ProxyPass /_matrix http://127.0.0.1:8008/_matrix nocanon
     ProxyPassReverse /_matrix http://127.0.0.1:8008/_matrix
 </VirtualHost>
-
+```
 
 ##### Test Sites:
+
 https://matrix.youDOMAIN.COM/_matrix/static/
 https://federationtester.matrix.org
 
 
-##Create Admin-User:
+### Create Admin-User:
+
 docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml
 
 
@@ -132,8 +144,10 @@ docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c
 ## ELEMENT WEB
 
 ### Element Configuration:
+
 vi element-config.json
 
+```
 {
     "default_server_config": {
         "m.homeserver": {
@@ -182,10 +196,11 @@ vi element-config.json
     },
     "map_style_url": "https://api.maptiler.com/maps/streets/style.json?key=fU3vlMsMn4Jb6dnEIFsx"
 }
-
+```
 
 ### Apache Conf for Element:
 
+```
 <VirtualHost *:80>
     ServerName  element.youDOMAIN.COM
     RewriteEngine On
@@ -208,3 +223,4 @@ vi element-config.json
     ProxyPass / http://127.0.0.1:8088/
     ProxyPassReverse / http://127.0.0.1:8088/
 </VirtualHost>
+```
