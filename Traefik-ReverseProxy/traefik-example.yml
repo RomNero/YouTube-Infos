@@ -1,0 +1,61 @@
+version: '3'
+
+services:
+  reverse-proxy:
+    image: traefik:v2.10
+    command:
+    - "--api.insecure=true"
+    - "--providers.docker"
+    - "--providers.docker.exposedByDefault=false"
+    - "--providers.docker.network=proxynet"
+    - "--entrypoints.http.address=:80"
+#    - "--entrypoints.http.http.redirections.entrypoint.to=https"
+#    - "--entrypoints.http.http.redirections.entrypoint.scheme=https"
+    - "--entrypoints.https.address=:443"
+    - "--log.level=DEBUG"
+    # # Let'sEncrypt
+    # - "--entrypoints.https.http.tls.certResolver=le"
+    # - "--certificatesresolvers.le.acme.tlschallenge=true"
+    # - "--certificatesresolvers.le.acme.email=you@mail.net"
+    # - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      # The HTTP port
+      - "80:80"
+      - "443:443"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      #- /opt/traefik/letsencrypt:/letsencrypt
+#    networks:
+#      - web-proxy
+
+networks:
+  default:
+    name: proxynet
+    external: true
+
+
+
+############################  Example: NGINX   #################################
+version: '3'
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    hostname: nginx
+
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.nginx.rule=Host(`nginx.YOUDOMAIN.NET`)"
+        - "traefik.http.routers.nginx.entrypoints=http"
+#        - "traefik.http.services.nginx.loadbalancer.server.port=80"
+#        - "traefik.http.routers.nginx.tls=false"
+#    ports:
+#      - "80:80"
+
+networks:
+  default:
+    name: proxynet
+    external: true
