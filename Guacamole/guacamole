@@ -1,0 +1,56 @@
+# Pull/Download Docker Images:
+docker pull guacamole/guacamole
+docker pull guacamole/guacd
+docker pull mysql:8.0
+
+# Create Init DB:
+docker run --rm guacamole/guacamole /opt/guacamole/bin/initdb.sh --mysql > initdb.sql
+
+# Import DB:
+docker compose up mysql -d
+docker exec -i guacmysql mysql -uguacuser -pguacPA55 guacamole < initdb.sql
+#TEST:
+docker exec -i guacmysql mysql -uguacuser -pguacPA55 guacamole
+
+# DOCKER COMPOSE:
+
+version: "3"
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: guacmysql
+    environment:
+      MYSQL_DATABASE: guacamole
+      MYSQL_USER: guacuser
+      MYSQL_PASSWORD: guacPA55
+      MYSQL_ROOT_PASSWORD: myROOTpa55
+    volumes:
+      - ./mysql:/var/lib/mysql
+    restart: unless-stopped
+    
+  guacd:
+    image: guacamole/guacd
+    container_name: guacd
+    restart: unless-stopped
+    depends_on:
+      - mysql
+
+  guacamole:
+    image: guacamole/guacamole
+    container_name: guacamole
+    environment:
+      MYSQL_HOSTNAME: mysql
+      MYSQL_DATABASE: guacamole
+      MYSQL_USER: guacuser
+      MYSQL_PASSWORD: guacPA55
+      GUACD_HOSTNAME: guacd
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - guacd
+
+
+
+Default User & Pass: guacadmin
