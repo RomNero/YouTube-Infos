@@ -1,0 +1,190 @@
+lsusb
+Bus 001 Device 005: ID 051d:0002 American Power Conversion Uninterruptible Power Supply
+
+VendorID: 051d
+ProductID: 0002
+
+apt install nut
+
+#Configurations: /etc/nut/
+
+vi /etc/nut/ups.conf
+
+[<UPSNAME>]
+driver = <DRIVERNAME>
+desc = "<MODEL NAME>"
+port = auto
+vendorid = <VENDORID>
+productid = <PRODUCTID>
+
+<DRIVERNAME> – Replace this block with the name of the driver your UPS expects.
+
+# Test:
+upsdrvctl start
+
+###Enable NUT to Be Accessible Outside your Raspberry Pi
+vi /etc/nut/upsd.conf
+
+LISTEN 0.0.0.0 3493
+
+### Setting up a NUT User
+vi /etc/nut/upsd.users
+
+
+[admin]
+        password = adminpass
+        actions = SET
+        instcmds = ALL
+[upsmon_local]
+        password  = pass4upsuser
+        upsmon master
+[upsmon_remote]
+        password  = pass4upsuser
+        upsmon slave
+[monuser]				#This is what Synology DSM expects
+        password  = secret   #Leave this here.
+        upsmon slave
+
+
+### Enable MONITOR:
+
+vi /etc/nut/upsmon.conf
+MONITOR apc@localhost 1 upsmon_local pass4upsuser master
+
+
+vi /etc/nut/nut.conf
+MODE=netserver
+
+
+# Verify the configuration:
+service nut-server status
+service nut-client status
+
+service nut-server start
+service nut-client start
+
+
+# TEST Konfiguration
+ upsc apc
+
+### Web monitoring:
+apt install apache2
+apt install nut-cgi
+
+
+vi /etc/nut/hosts.conf
+
+MONITOR apc@localhost "Local UPS"
+
+a2enmod cgi
+service apache2 restart
+
+http://YOU-IP/cgi-bin/nut/upsstats.cgi
+
+
+vi /etc/nut/upsset.conf 
+I_HAVE_SECURED_MY_CGI_DIRECTORY
+
+
+###Connect anothed Debian/Ubuntu/ProxMox
+apt update
+apt install nut-client
+
+vi /etc/nut/nut.conf
+MODE=netclient
+
+#Edit /etc/nut/upsmon.conf and add a MONITOR directive: 
+MONITOR apc@YOUR-SERVER-IP 1 upsmon_remote pass4upsuser slave
+RUN_AS_USER root
+MINSUPPLIES 1
+SHUTDOWNCMD "/sbin/shutdown -h +0"
+NOTIFYCMD /usr/sbin/upssched
+
+POLLFREQ 5
+POLLFREQALERT 5
+HOSTSYNC 15
+DEADTIME 15
+
+POWERDOWNFLAG /etc/killpower
+
+NOTIFYMSG ONLINE   "UPS %s on line power"
+NOTIFYMSG ONBATT   "UPS %s on battery"
+NOTIFYMSG LOWBATT  "UPS %s battery is low"
+NOTIFYMSG FSD      "UPS %s: forced shutdown in progress"
+NOTIFYMSG COMMOK   "Communications with UPS %s established"
+NOTIFYMSG COMMBAD  "Communications with UPS %s lost"
+NOTIFYMSG SHUTDOWN "Auto logout and shutdown proceeding"
+NOTIFYMSG REPLBATT "UPS %s battery needs to be replaced"
+NOTIFYMSG NOCOMM   "UPS %s is unavailable"
+NOTIFYMSG NOPARENT "upsmon parent process died - shutdown impossible"
+
+NOTIFYFLAG ONLINE      SYSLOG+WALL+EXEC
+NOTIFYFLAG ONBATT      SYSLOG+WALL+EXEC
+NOTIFYFLAG LOWBATT     SYSLOG+WALL
+NOTIFYFLAG FSD         SYSLOG+WALL+EXEC
+NOTIFYFLAG COMMOK      SYSLOG+WALL+EXEC
+NOTIFYFLAG COMMBAD     SYSLOG+WALL+EXEC
+NOTIFYFLAG SHUTDOWN    SYSLOG+WALL+EXEC
+NOTIFYFLAG REPLBATT    SYSLOG+WALL
+NOTIFYFLAG NOCOMM      SYSLOG+WALL+EXEC
+NOTIFYFLAG NOPARENT    SYSLOG+WALL
+
+RBWARNTIME 43200
+NOCOMMWARNTIME 300
+FINALDELAY 5
+
+###Start monitoring:
+service nut-client start
+
+#Check ststus:
+upsc apc@YOUR-SERVER-IP
+
+#Auto Shutdown:
+vi upssched.conf
+
+CMDSCRIPT /etc/nut/upssched-cmd
+PIPEFN /etc/nut/scheduler/upssched.pipe
+LOCKFN /etc/nut/scheduler/upssched.lock
+
+AT ONBATT * START-TIMER onbatt 30
+AT ONLINE * CANCEL-TIMER onbatt online
+AT ONBATT * START-TIMER preshutdown 30
+AT LOWBATT * EXECUTE onbatt
+AT COMMBAD * START-TIMER commbad 30
+AT COMMOK * CANCEL-TIMER commbad commok
+AT NOCOMM * EXECUTE commbad
+AT SHUTDOWN * EXECUTE powerdown
+AT SHUTDOWN * EXECUTE powerdown
+
+
+mkdir /etc/nut/scheduler/
+chown -R root.nut scheduler
+
+###Script
+vi /etc/nut/upssched-cmd
+
+
+#!/bin/sh
+ case $1 in
+       onbatt)
+          logger -t upssched-cmd "UPS running on battery"
+          ;;
+       preshutdown)
+          logger -t upssched-cmd "UPS on battery too long, pre shutdown"
+          /usr/sbin/upsmon -c fsd
+          ;;
+       shutdowncritical)
+          logger -t upssched-cmd "UPS on battery critical, forced shutdown"
+          /usr/sbin/upsmon -c fsd
+          ;;
+       upsgone)
+          logger -t upssched-cmd "UPS has been gone too long, can't reach"
+          ;;
+       *)
+          logger -t upssched-cmd "Unrecognized command: $1"
+          ;;
+ esac
+
+chmod +x upssched-cmd
+
+service nut-client restart
