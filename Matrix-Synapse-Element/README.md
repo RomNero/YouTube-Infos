@@ -309,11 +309,12 @@ vi /opt/matrix/element-config.json
 
 
 #### рабочие Url
-#####сервер
+
+##### сервер
 [https://matrix.youDOMAIN.COM/_matrix/static/]
 
 
-#####админка 
+##### админка 
 работает на 8080 доступ только по http без s. 
 рекомендуется выключать и включать по мере необходимости. 
 в конфиге apache2 с последующим его перезапуском
@@ -322,6 +323,6 @@ vi /opt/matrix/element-config.json
 [HTTP://matrix.youDOMAIN.COM:8080/]
 
 
-######web клиент:
+###### web клиент:
 [https://element.youDOMAIN.COM/]
 
