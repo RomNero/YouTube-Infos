@@ -35,11 +35,49 @@ database:
 enable_registration: false
 ```
 
+не обязательно но можно включить регистрацию так, только с google captcha v2
+#### Change Matrix configuration. registration, turnserver, recaptcha V2!!!:
+```
+#Registration:
+recaptcha_public_key: "SECRETxxxxxxxxxxxxxxxxxxxxxxxxpubKEY"
+recaptcha_private_key: "SECRETxxxxxxxxxxxxxxxxxxxxxxxxprivKEY"
+  
+enable_registration_captcha: true 
+
+enable_registration: true
+enable_registration_without_verification: false
+
+enable_registration_email: true
+email_from: 'noreply@example.com'
+
+max_avatar_size: 3M
+max_upload_size: 20M
+encryption_enabled_by_default_for_room_type: all
+allow_guest_access: false
+encryption_enabled_by_default_for_room_type: all
+allowed_avatar_mimetypes: ["image/png", "image/jpeg", "image/gif"]
+
+
+#turn_uris: [ "turn:turn.matrix.org?transport=udp", "turn:turn.matrix.org?transport=tcp" ]
+#turn_shared_secret: "fghfghXXXXXXXXXXXXXSECRETXXXXKEYXXXXXXXXXXXXXXXXXXXXXASDFSDd"
+#turn_user_lifetime: 86400000
+#turn_allow_guests: true
+
+```
 ### Docker Compose
 ```
 version: '3.8'
 
 services:
+  synapse-admin:
+    container_name: synapse-admin
+    hostname: synapse-admin
+    image: awesometechnologies/synapse-admin:latest
+    # context: https://github.com/Awesome-Technologies/synapse-admin.git
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
   element:
     image: vectorim/element-web:latest
     container_name: matrix_element
@@ -112,6 +150,10 @@ vi /etc/apache2/ports.conf
     ProxyPassReverse /_matrix http://127.0.0.1:8008/_matrix
     ProxyPass /_synapse/client http://127.0.0.1:8008/_synapse/client nocanon
     ProxyPassReverse /_synapse/client http://127.0.0.1:8008/_synapse/client
+
+    #чтобы включить админ панель нужно добавить эти две строчки endpoint. чтобы выключить доступ к админке нужно их комментировать и перезапускать сервер.
+    ProxyPass /_synapse/admin http://127.0.0.1:8008/_synapse/admin nocanon
+    ProxyPassReverse /_synapse/admin http://127.0.0.1:8008/_synapse/admin
 </VirtualHost>
 
 <VirtualHost *:8448>
@@ -132,6 +174,9 @@ vi /etc/apache2/ports.conf
 ##### Test Sites:
 
 [https://matrix.youDOMAIN.COM/_matrix/static/]
+
+админка работает на 8080 доступ только по http без s. рекомендуется выключать и включать по мере необходимости. в конфиге apache2 с последующим его перезапуском
+[HTTP://matrix.youDOMAIN.COM:8080/]
 
 [https://federationtester.matrix.org]
 
@@ -225,3 +270,5 @@ vi element-config.json
     ProxyPassReverse / http://127.0.0.1:8088/
 </VirtualHost>
 ```
+##### Test Sites:
+[https://element.youDOMAIN.COM/]
