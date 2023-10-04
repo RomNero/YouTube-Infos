@@ -295,23 +295,33 @@ vi /opt/matrix/element-config.json
 ```service apache2 restart```
 
 
-##### Test Sites:
-
-[https://matrix.youDOMAIN.COM/_matrix/static/]
-
-админка работает на 8080 доступ только по http без s. рекомендуется выключать и включать по мере необходимости. в конфиге apache2 с последующим его перезапуском
-[HTTP://matrix.youDOMAIN.COM:8080/]
-
-[https://federationtester.matrix.org]
-
-
-
-##### Test Sites:
-[https://element.youDOMAIN.COM/]
-
 
 ### Create Admin-User:
 
-Создание пользователя из консоли
+Создание пользователя из консоли(создадим админа)
 
-docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml
+```docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml```
+
+#### Test Sites:
+
+проверку своего сервера можно сделать здесь, на этом сервисе
+[https://federationtester.matrix.org]
+
+
+#### рабочие Url
+#####сервер
+[https://matrix.youDOMAIN.COM/_matrix/static/]
+
+
+#####админка 
+работает на 8080 доступ только по http без s. 
+рекомендуется выключать и включать по мере необходимости. 
+в конфиге apache2 с последующим его перезапуском
+
+доступ к админке(авторизуемся админом)
+[HTTP://matrix.youDOMAIN.COM:8080/]
+
+
+######web клиент:
+[https://element.youDOMAIN.COM/]
+
