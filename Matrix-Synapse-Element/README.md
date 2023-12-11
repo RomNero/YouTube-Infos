@@ -1,4 +1,10 @@
+сперва регистрируем домен у регистратора и прописываем dnc A записи указывающий на ip нашего vps
+на нём устанавливаем lunux (debian/ubuntu/devuan)
+
+
 ### Install Packages:
+
+
 
 * Docker: curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 * Apache: apt install apache2
@@ -6,9 +12,14 @@
 
 ### Let'sEncrypt:
 
+генерируем сертификаты для своего домена
+
 apt install certbot
 
 ### Generate Matrix Config:
+
+это нужно сделать чтобы создался каталог с файлом настроек /opt/matrix/synapse/homeserver.yaml
+указываем свой домен
 
 ```
 docker run -it --rm \
@@ -18,7 +29,9 @@ docker run -it --rm \
     matrixdotorg/synapse:latest generate
 ```    
     
-#### Change Matrix configuration. postgres database:
+#### Change Matrix configuration (homeserver.yaml). postgres database:
+
+меняем базу данных с sqlite на postgresql следующим образом
 
 ```
 database:
@@ -35,11 +48,54 @@ database:
 enable_registration: false
 ```
 
-### Docker Compose
+если регистрация пользователей из клиента не требуются, то пропускайте эту настройку
+не обязательно но можно включить регистрацию так, только с google captcha v2
+#### Change Matrix configuration. registration, turnserver, recaptcha V2!!!:
+*при этом запрос каптчи сработает только при регистрации, но не при авторизации существующих пользователей
+```
+#Registration:
+recaptcha_public_key: "SECRETxxxxxxxxxxxxxxxxxxxxxxxxpubKEY"
+recaptcha_private_key: "SECRETxxxxxxxxxxxxxxxxxxxxxxxxprivKEY"
+  
+enable_registration_captcha: true 
+
+enable_registration: true
+enable_registration_without_verification: false
+
+enable_registration_email: true
+email_from: 'noreply@example.com'
+
+max_avatar_size: 3M
+max_upload_size: 20M
+encryption_enabled_by_default_for_room_type: all
+allow_guest_access: false
+encryption_enabled_by_default_for_room_type: all
+allowed_avatar_mimetypes: ["image/png", "image/jpeg", "image/gif"]
+
+
+#turn_uris: [ "turn:turn.matrix.org?transport=udp", "turn:turn.matrix.org?transport=tcp" ]
+#turn_shared_secret: "fghfghXXXXXXXXXXXXXSECRETXXXXKEYXXXXXXXXXXXXXXXXXXXXXASDFSDd"
+#turn_user_lifetime: 86400000
+#turn_allow_guests: true
+
+
+```
+
+
+### Docker Compose (файл /opt/matrix/docker-compose.yml)
 ```
 version: '3.8'
 
 services:
+  synapse-admin:
+    container_name: synapse-admin
+    hostname: synapse-admin
+    image: awesometechnologies/synapse-admin:latest
+    # context: https://github.com/Awesome-Technologies/synapse-admin.git
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
   element:
     image: vectorim/element-web:latest
     container_name: matrix_element
@@ -82,6 +138,8 @@ certbot certonly
 
 #### Add Ports:
 
+добавляем порт 8448 федерации в настройки apache2  на хосте
+
 ```
 vi /etc/apache2/ports.conf
 <IfModule ssl_module>
@@ -90,6 +148,8 @@ vi /etc/apache2/ports.conf
 ```
 
 #### VirtualHost:
+
+добавляем файл настроек /etc/apache2/sites-available/matrix.conf
 
 ```
 <VirtualHost *:80>
@@ -112,6 +172,10 @@ vi /etc/apache2/ports.conf
     ProxyPassReverse /_matrix http://127.0.0.1:8008/_matrix
     ProxyPass /_synapse/client http://127.0.0.1:8008/_synapse/client nocanon
     ProxyPassReverse /_synapse/client http://127.0.0.1:8008/_synapse/client
+
+    #чтобы включить админ панель нужно добавить эти две строчки endpoint. чтобы выключить доступ к админке нужно их комментировать и перезапускать сервер.
+    ProxyPass /_synapse/admin http://127.0.0.1:8008/_synapse/admin nocanon
+    ProxyPassReverse /_synapse/admin http://127.0.0.1:8008/_synapse/admin
 </VirtualHost>
 
 <VirtualHost *:8448>
@@ -129,24 +193,12 @@ vi /etc/apache2/ports.conf
 </VirtualHost>
 ```
 
-##### Test Sites:
-
-[https://matrix.youDOMAIN.COM/_matrix/static/]
-
-[https://federationtester.matrix.org]
-
-
-### Create Admin-User:
-
-docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml
-
-
 
 ## ELEMENT WEB
 
 ### Element Configuration:
 
-vi element-config.json
+vi /opt/matrix/element-config.json
 
 ```
 {
@@ -201,6 +253,8 @@ vi element-config.json
 
 ### Apache Conf for Element:
 
+/etc/apache2/sites-available/element.conf
+
 ```
 <VirtualHost *:80>
     ServerName  element.youDOMAIN.COM
@@ -225,3 +279,53 @@ vi element-config.json
     ProxyPassReverse / http://127.0.0.1:8088/
 </VirtualHost>
 ```
+
+
+
+#### Apache2 применяем настройки вебсервера на хосте:
+
+проверяем конфиг
+
+```apache2ctl -t```
+
+если Syntax OK применяем настройки
+
+```a2ensite *```
+
+перезагружаем сервер
+```service apache2 restart```
+
+
+
+### Create Admin-User:
+
+Создание пользователя из консоли(создадим админа)
+
+```docker exec -it matrix_synapse register_new_matrix_user http://localhost:8008 -c /data/homeserver.yaml```
+
+#### Test Sites:
+
+проверку своего сервера можно сделать здесь, на этом сервисе
+[https://federationtester.matrix.org]
+
+
+#### рабочие Url
+
+##### сервер
+[https://matrix.youDOMAIN.COM/_matrix/static/]
+
+
+##### админка 
+*работает на 8080 доступ только по http и только с localhost т.е. нужно пробросить ssh тонель указав ip вашего сервера вместо xxx...
+```ssh -g -L 8080:localhost:8080 -f -N root@xxx.xxx.xxx.xxx```
+
+*после проброса тонеля ssh(если на ваш сервер можно попасть только по ключам, то иметь такую админку открытой, вполне безопасно) 
+*доступ к админке(авторизуемся админом):
+[HTTP://localhost:8080/]
+*в качестве сервера указываем ваш сервер с https [https://matrix.youDOMAIN.COM/]
+*по завершению работ закрываем тонель
+*Определите идентификатор процесса (PID) для туннеля, используя команду ```ps aux | grep ssh```. 2. Используйте команду ```kill PID```
+
+###### web клиент:
+[https://element.youDOMAIN.COM/]
+
