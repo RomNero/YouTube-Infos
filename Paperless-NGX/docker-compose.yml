@@ -1,0 +1,97 @@
+services:
+  broker:
+    image: docker.io/library/redis:8
+    container_name: paperless-redis
+    restart: unless-stopped
+    volumes:
+      - ./redisdata:/data
+    networks:          
+      - paperless-backend
+
+  db:
+    image: docker.io/library/postgres:17
+    container_name: paperless-postgres
+    restart: unless-stopped
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+    networks:            
+      - paperless-backend    
+
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless-web
+    restart: unless-stopped
+    depends_on:
+      - db
+      - broker
+      - gotenberg
+      - tika
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "-S", "--max-time", "2", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./data:/usr/src/paperless/data
+      - ./media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - ./consume:/usr/src/paperless/consume
+    #env_file: docker-compose.env
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      USERMAP_UID: 1000
+      USERMAP_GID: 100
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+      PAPERLESS_OCR_LANGUAGES: eng deu rus ukr
+      PAPERLESS_OCR_LANGUAGE: eng+deu
+      #Tika & Gotenberg:
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      #Additional:
+      #PAPERLESS_DBNAME=<name>
+      #PAPERLESS_DBUSER=<name>
+      #PAPERLESS_DBPASS=<password>
+      PAPERLESS_ENABLE_UPDATE_CHECK: true
+      #consume Subdirs
+      PAPERLESS_CONSUMER_RECURSIVE: true
+      PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS: true
+      #required when using a reverse proxy:
+      PAPERLESS_URL: https://YOU-DOMAIN.<romnero>.
+      #Admin User and Password for K8s & AWS ECS:
+      #PAPERLESS_ADMIN_USER=<username>
+      #PAPERLESS_ADMIN_PASSWORD=<password>
+    networks:
+      - paperless-backend
+      - default
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.23
+    container_name: paperless-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+    networks:
+      - paperless-backend
+
+  tika:
+    image: ghcr.io/paperless-ngx/tika:latest
+    container_name: paperless-tika
+    restart: unless-stopped
+    networks:
+      - paperless-backend
+
+networks:
+  paperless-backend:
+  default:
+    name: paperless-frontend
+    external: true
